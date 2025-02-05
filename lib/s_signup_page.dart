@@ -216,7 +216,7 @@ class s_SignUpScreenState extends State<s_SignUpScreen> {
                             try {
                               final response = await http.post(
                                 Uri.parse(
-                                    'http://10.0.2.2/minoriiproject/s_signup.php'),
+                                    'http://localhost/minoriiproject/s_signup.php'),
                                 body: {
                                   'email': _emailController.text,
                                   'password': _passwordController.text,
@@ -237,7 +237,8 @@ class s_SignUpScreenState extends State<s_SignUpScreen> {
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (context) => s_LoginScreen()),
+                                      builder: (context) =>
+                                          const s_LoginScreen()),
                                 );
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -276,7 +277,7 @@ class s_SignUpScreenState extends State<s_SignUpScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => s_LoginScreen()),
+                                  builder: (context) => const s_LoginScreen()),
                             );
                           },
                           child: const Text(

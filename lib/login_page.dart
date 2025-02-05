@@ -1,14 +1,13 @@
-import 'package:flutter/material.dart';
-import 'signup_page.dart'; // Ensure you import the correct file
-import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'welcome_page.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'welcome_page.dart'; // Import the dashboard page
 
-// Define CurvedPainter for custom background curve
 class CurvedPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()..color = const Color.fromARGB(255, 253, 228, 6);
+    final Paint paint = Paint()..color = Colors.yellow[300]!;
     final Path path = Path()
       ..lineTo(0, 0)
       ..lineTo(0, size.height - 40)
@@ -49,33 +48,75 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final response = await http.post(
         Uri.parse('http://10.0.2.2/minoriiproject/login.php'),
-        body: {
-          'email': email,
-          'password': password,
-        },
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
       );
 
-      final responseData = json.decode(response.body);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print("Login Response: $data");
 
-      if (responseData['success']) {
-        _showSuccess('Login successful');
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => WelcomePage()),
-        );
+        if (data['success']) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('session_id', data['session_id'] ?? '');
+          await prefs.setInt('branch_id', data['user']['branch_id'] ?? 0);
+          await prefs.setInt('user_id', data['user']['id'] ?? 0);
+
+          print("User Login Success - Redirecting to WelcomePage");
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const WelcomePage()),
+          );
+        } else {
+          _showError(data['message'] ?? 'Login failed');
+        }
       } else {
-        _showError(responseData['message']);
+        _showError('Server error: ${response.statusCode}');
       }
     } catch (e) {
+      print("Error: $e");
       _showError('An error occurred while processing your request');
     }
   }
 
-  void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: Colors.green,
-    ));
+  Future<void> _checkSession() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? sessionId = prefs.getString('session_id');
+
+    if (sessionId != null) {
+      try {
+        final response = await http.get(
+          Uri.parse('http://10.0.2.2/minoriiproject/check_session.php'),
+          headers: {"Authorization": sessionId},
+        );
+
+        if (response.statusCode == 200) {
+          final responseData = json.decode(response.body);
+          print("Session Check Response: $responseData");
+
+          if (responseData['success']) {
+            await prefs.setString(
+                'session_id', responseData['session_id'] ?? '');
+            await prefs.setString(
+                'user_email', responseData['user']['email'] ?? '');
+            await prefs.setInt(
+                'branch_id', responseData['user']['branch_id'] ?? 0);
+            await prefs.setInt('user_id', responseData['user']['id'] ?? 0);
+
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const WelcomePage()),
+            );
+          } else {
+            _showError("Session expired, please log in again.");
+          }
+        }
+      } catch (e) {
+        print("Session Check Error: $e");
+        _showError('An error occurred while checking session');
+      }
+    }
   }
 
   void _showError(String message) {
@@ -92,10 +133,6 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SingleChildScrollView(
         child: Stack(
           children: [
-            CustomPaint(
-              size: Size(MediaQuery.of(context).size.width, 200),
-              painter: CurvedPainter(), // Now it works
-            ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
@@ -118,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(20),
                         child: Image.asset(
-                          'assets/logo.png', // Ensure this image path exists
+                          'assets/login1.png',
                           height: 150,
                           width: 150,
                           fit: BoxFit.cover,
@@ -188,14 +225,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 15),
-                        const Align(
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            'Forgot Password?',
-                            style: TextStyle(color: Colors.blue),
-                          ),
-                        ),
-                        const SizedBox(height: 30),
                         ElevatedButton(
                           onPressed: _login,
                           style: ElevatedButton.styleFrom(
@@ -210,21 +239,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: const Text(
                             'Login',
                             style: TextStyle(color: Colors.white, fontSize: 16),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => SignUpScreen(),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            "Don't have an account? Sign up",
-                            style: TextStyle(color: Colors.blue),
                           ),
                         ),
                       ],

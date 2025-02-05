@@ -22,4 +22,8 @@ plugins {
     id "org.jetbrains.kotlin.android" version "1.8.22" apply false
 }
 
-include ":app"
+// Include the :app project here
+include ':app'
+
+// Include any other modules you need, such as :file_picker if it's still used
+// include ':file_picker'

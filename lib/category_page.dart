@@ -1,112 +1,139 @@
 import 'package:flutter/material.dart';
-import 'welcome_page.dart';
-import 'Nepali_menu_page.dart'; // Import NepaliMenuPage
-import 'indian_menu_page.dart';
-import 'chinese_menu_page.dart';
-import 'italian_page.dart';
-import 'soft drinks.dart';
-import 'sweets.dart'; // Import the correct SweetsPage
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'menuPage.dart'; // Import MenuPage
 
-class CategoryPage extends StatelessWidget {
-  // Temporary customer name for display; replace this with backend logic
-  final String customerName = "John";
+class CategoryPage extends StatefulWidget {
+  final int loggedInBranchId;
+  final int loggedInUserId;
 
-  const CategoryPage({super.key});
+  const CategoryPage(
+      {super.key,
+      required this.loggedInBranchId,
+      required this.loggedInUserId});
+
+  @override
+  State<CategoryPage> createState() => _CategoryPageState();
+}
+
+class _CategoryPageState extends State<CategoryPage> {
+  late Future<List<dynamic>> categories;
+  String searchQuery = "";
+
+  @override
+  void initState() {
+    super.initState();
+    categories = fetchCategories();
+  }
+
+  Future<List<dynamic>> fetchCategories() async {
+    try {
+      final response = await http.get(Uri.parse(
+          'http://10.0.2.2/minoriiproject/categories.php?branch_id=${widget.loggedInBranchId}'));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success']) {
+          return data['categories'];
+        } else {
+          throw Exception('No categories found');
+        }
+      } else {
+        throw Exception('Failed to load categories: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to load categories: $e');
+    }
+  }
+
+  void handleSearch(String query) {
+    setState(() {
+      searchQuery = query.trim().toLowerCase();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back), // Back arrow icon
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => WelcomePage()),
-            );
-          },
-        ),
-        title: const Text(
-          'Categories',
-          style: TextStyle(
-            fontFamily: 'Raleway', // Modern and elegant font
-            fontSize: 22, // Slightly larger size for emphasis
-            fontWeight: FontWeight.bold, // Italicized for style
-            color: Colors.black, // Black color for contrast
-          ),
-        ),
-        backgroundColor:
-            const Color(0xFFFFC400), // A richer yellow for better appearance
+        title: const Text('Categories'),
+        backgroundColor: const Color(0xFFFFDE21),
       ),
       body: Column(
         children: [
-          // Greeting and Search Section
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Hi, $customerName',
-                  style: const TextStyle(
-                    fontFamily: 'Roboto',
-                    fontSize: 26, // Slightly larger font for a welcoming feel
-                    fontWeight: FontWeight.w600, // Semi-bold for emphasis
-                    color: Colors.black,
-                  ),
+            child: TextField(
+              onChanged: handleSearch,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: 'Search Categories',
+                hintStyle: const TextStyle(
+                  fontFamily: 'OpenSans',
+                  fontSize: 16,
+                  color: Colors.black,
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Grab your delicious meal!',
-                  style: TextStyle(
-                    fontFamily: 'OpenSans',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
-                    color: Color.fromARGB(
-                        255, 18, 18, 18), // Subtle gray for contrast
-                  ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Colors.grey),
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search),
-                    hintText: 'Search',
-                    hintStyle: const TextStyle(
-                      fontFamily: 'OpenSans',
-                      fontSize: 16,
-                      color: Colors.black, // Light gray for the placeholder
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: Colors.grey),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-          // Cuisine Grid Section
           Expanded(
-            child: GridView.count(
-              crossAxisCount: 2, // Two items per row
-              crossAxisSpacing: 20, // Space between columns
-              mainAxisSpacing: 20, // Space between rows
-              padding: const EdgeInsets.all(16),
-              childAspectRatio: 0.75, // Adjust to increase height of containers
-              children: [
-                buildCategoryCard(context, 'Nepali', 'assets/nepali.jpg',
-                    const NepaliMenuPage()),
-                buildCategoryCard(context, 'Indian', 'assets/indian.jpg',
-                    const IndianMenuPage()),
-                buildCategoryCard(context, 'Chinese', 'assets/chinese.jpg',
-                    const ChineseMenuPage()),
-                buildCategoryCard(context, 'Italian', 'assets/italian.jpg',
-                    const ItalianMenuPage()),
-                buildCategoryCard(context, 'Sweets', 'assets/sweets.jpg',
-                    const CakePriceListApp()),
-                buildCategoryCard(context, 'Soft Drinks',
-                    'assets/soft_drinks.jpg', const SoftDrinksMenuPage()),
-              ],
+            child: FutureBuilder<List<dynamic>>(
+              future: categories,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error: ${snapshot.error}',
+                      style: const TextStyle(
+                        fontFamily: 'Raleway',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.red,
+                      ),
+                    ),
+                  );
+                } else if (snapshot.data!.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'No categories found',
+                      style: TextStyle(
+                        fontFamily: 'Raleway',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  );
+                } else {
+                  final filteredCategories = snapshot.data!.where((category) {
+                    final name =
+                        category['category_name'].toString().toLowerCase();
+                    return name.contains(searchQuery);
+                  }).toList();
+
+                  return GridView.count(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    padding: const EdgeInsets.all(16),
+                    childAspectRatio: 0.85,
+                    children: filteredCategories
+                        .map((category) => buildCategoryCard(
+                              context,
+                              category['category_name'],
+                              category['image_path'],
+                              category['category_id'] ?? 0,
+                            ))
+                        .toList(),
+                  );
+                }
+              },
             ),
           ),
         ],
@@ -115,46 +142,72 @@ class CategoryPage extends StatelessWidget {
   }
 
   Widget buildCategoryCard(
-      BuildContext context, String title, String imagePath, Widget page) {
+      BuildContext context, String title, String imagePath, int categoryId) {
     return GestureDetector(
       onTap: () {
-        // Navigate to the respective page when a category is tapped
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => page),
-        );
+        if (categoryId != 0) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MenuPage(
+                categoryId: categoryId,
+                loggedInBranchId: widget.loggedInBranchId,
+                loggedInUserId: widget.loggedInUserId,
+              ),
+            ),
+          );
+        }
       },
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFFFC400),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          children: [
-            Expanded(
-              child: Center(
-                child: CircleAvatar(
-                  radius: 50, // Adjust as needed
-                  backgroundImage: AssetImage(imagePath),
-                ),
-              ),
-            ),
-            Container(
-              width: double.infinity,
-              color: const Color.fromARGB(255, 255, 255, 255),
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Text(
-                title, // Cuisine titles
-                style: const TextStyle(
-                  fontFamily: 'Raleway', // Elegant and modern font
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-                textAlign: TextAlign.center,
-              ),
+          color: const Color(0xFFFFDE21),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              spreadRadius: 2,
+              blurRadius: 10,
+              offset: const Offset(0, 5),
             ),
           ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Image.network(
+                  imagePath,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => const Icon(
+                    Icons.broken_image,
+                    size: 50,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  color: Colors.black.withOpacity(0.6),
+                  child: Center(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontFamily: 'Raleway',
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
-// import 'aboutus.dart';
-// import 'profilepage.dart';
-// import 'contactpage.dart';
+import 'aboutus.dart';
+import 'profilePage.dart';
+import 'contactUs.dart';
+import 'subscriptionPage.dart';
 
 class AccountPage extends StatefulWidget {
-  const AccountPage({super.key});
+  final int branchId; // Add this to accept branchId
+  final int userId; // Add this to accept userId
+
+  // Modify the constructor to accept these parameters
+  const AccountPage({super.key, required this.branchId, required this.userId});
 
   @override
   _AccountPageState createState() => _AccountPageState();
@@ -39,7 +44,7 @@ class _AccountPageState extends State<AccountPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'User',
+                    'User ID: ${widget.userId}', // Displaying userId
                     style: TextStyle(
                       color: _isDarkMode ? Colors.white : Colors.black,
                       fontSize: 18,
@@ -48,7 +53,7 @@ class _AccountPageState extends State<AccountPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Login to view all the features',
+                    'Branch ID: ${widget.branchId}', // Displaying branchId
                     style: TextStyle(
                       color: _isDarkMode ? Colors.grey : Colors.black,
                       fontSize: 14,
@@ -79,7 +84,7 @@ class _AccountPageState extends State<AccountPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => ProfilePage()),
+                              builder: (context) => const ProfilePage()),
                         );
                       },
                     ),
@@ -113,6 +118,24 @@ class _AccountPageState extends State<AccountPage> {
                       text: 'Loyalty Points',
                       onTap: () {},
                     ),
+                    InteractiveTile(
+                      icon: Icons.star_border,
+                      text: 'Loyalty Points',
+                      onTap: () {},
+                    ),
+                    InteractiveTile(
+                      icon: Icons.subscriptions,
+                      text: 'Subscription',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SubscriptionPage(
+                                userId: widget.userId), // Pass userId
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
 
@@ -128,7 +151,7 @@ class _AccountPageState extends State<AccountPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => AboutUsPage()),
+                              builder: (context) => const AboutUsPage()),
                         );
                       },
                     ),
@@ -139,7 +162,7 @@ class _AccountPageState extends State<AccountPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => ContactUsPage()),
+                              builder: (context) => const ContactUsPage()),
                         );
                       },
                     ),
@@ -172,7 +195,6 @@ class Section extends StatelessWidget {
   final String title;
   final bool isDarkMode;
   final List<Widget> children;
-
   const Section(
       {super.key,
       required this.title,
